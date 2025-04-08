@@ -4,41 +4,30 @@ import com.cofix.cofixBackend.Models.BenefitTypes;
 import com.cofix.cofixBackend.Models.MyPost;
 import com.cofix.cofixBackend.Models.MyReview;
 import com.cofix.cofixBackend.Models.MyUser;
-import com.cofix.cofixBackend.Models.CommunityIssue;
-import com.cofix.cofixBackend.Models.Location;
 import com.cofix.cofixBackend.Models.AdminUser;
-import com.cofix.cofixBackend.Models.PostPk;
+import com.cofix.cofixBackend.Models.Location;
 import com.cofix.cofixBackend.Services.AuthService;
 import com.cofix.cofixBackend.Services.CofixService;
-import com.cofix.cofixBackend.Services.EmailSenderService;
 import jakarta.mail.MessagingException;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.Base64;
 import java.util.stream.Collectors;
-import java.util.TreeMap;
 
 @RestController
-@Slf4j
 @CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", methods = {
         RequestMethod.GET,
         RequestMethod.POST,
@@ -116,9 +105,6 @@ public class CofixLoginController {
             return ResponseEntity.ok(response);
         }
     }
-
-    @Autowired
-    private EmailSenderService emailSenderService;
 
     @GetMapping("/hello")
     public void sendMail() throws MessagingException {
@@ -340,18 +326,14 @@ public class CofixLoginController {
     @DeleteMapping("/profile/issues/{postId}")
     public ResponseEntity<?> deleteIssue(@PathVariable("postId") Long postId) {
         try {
-            // First find the post
+            // Find the post
             Optional<MyPost> post = cofixService.getPostsRepo().findByPostId(postId);
             if (post.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
 
-            // Create PostPk with both email and postId
-            MyPost postToDelete = post.get();
-            PostPk postPk = new PostPk(postToDelete.getEmail(), postId);
-
-            // Delete using the composite key
-            cofixService.getPostsRepo().deleteById(postPk);
+            // Delete using the post ID
+            cofixService.getPostsRepo().deleteById(postId);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             logger.error("Error deleting issue: ", e);
@@ -640,9 +622,8 @@ public class CofixLoginController {
     @PutMapping("/profile/issues/update/{postId}")
     public ResponseEntity<MyPost> updateIssue(@PathVariable Long postId, @RequestBody MyPost updatedPost) {
         try {
-            // Find the existing post
-            Optional<MyPost> existingPost = cofixService.getPostsRepo()
-                    .findById(new PostPk(updatedPost.getEmail(), postId));
+            // First find the post by postId
+            Optional<MyPost> existingPost = cofixService.getPostsRepo().findByPostId(postId);
 
             if (existingPost.isPresent()) {
                 MyPost post = existingPost.get();

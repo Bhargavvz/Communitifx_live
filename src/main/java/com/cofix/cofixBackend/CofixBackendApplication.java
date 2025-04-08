@@ -8,7 +8,8 @@ import org.springframework.context.annotation.ComponentScan;
 @ComponentScan(basePackages = {
     "com.cofix.cofixBackend.Controllers",
     "com.cofix.cofixBackend.Services",
-    "com.cofix.cofixBackend.Configurations"
+    "com.cofix.cofixBackend.Configurations",
+    "com.cofix.cofixBackend.Config"
 })
 public class CofixBackendApplication {
 

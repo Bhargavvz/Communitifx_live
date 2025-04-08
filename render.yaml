@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: cofix-backend
+    env: java
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/cofixBackend-0.0.2-SNAPSHOT.jar
+    plan: free
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod

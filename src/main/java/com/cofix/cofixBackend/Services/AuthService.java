@@ -6,8 +6,10 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataAccessException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +17,8 @@ import java.time.LocalDateTime;
 
 @Service
 @Slf4j
-//@Order(2)
+@Order(10) // Lower priority than DatabaseInitializer
+@DependsOn("databaseInitializer") // Explicitly depend on DatabaseInitializer
 public class AuthService implements Ordered {
 
     @Autowired
@@ -27,26 +30,53 @@ public class AuthService implements Ordered {
 
     @PostConstruct
     public void initCofix(){
-
-        // Add admin data
-        if(userRepository.findByEmail(adminEmail)==null) {
-            log.info("++++++++++++++ CREATING ADMIN USER ++++++++++++++");
-            userRepository.save(new MyUser("admin", adminEmail, passwordEncoder.encode("admin")));
+        try {
+            // Add admin data
+            MyUser adminUser = null;
+            try {
+                adminUser = userRepository.findByEmail(adminEmail);
+            } catch (DataAccessException e) {
+                log.error("Error checking for admin user: {}", e.getMessage());
+                log.warn("Database tables may not be initialized yet. Check DatabaseInitializer logs.");
+                return;
+            }
+            
+            if(adminUser == null) {
+                log.info("++++++++++++++ CREATING ADMIN USER ++++++++++++++");
+                userRepository.save(new MyUser("admin", adminEmail, passwordEncoder.encode("admin")));
+            }
+            
+            // Add test user data
+            MyUser testUser = null;
+            try {
+                testUser = userRepository.findByEmail("test@user.com");
+            } catch (DataAccessException e) {
+                log.error("Error checking for test user: {}", e.getMessage());
+                return;
+            }
+            
+            if(testUser == null) {
+                log.info("++++++++++++++ CREATING TEST USER ++++++++++++++++");
+                userRepository.save(new MyUser("test@user.com", "Test User", passwordEncoder.encode("password"), "testy", "1234567890", "India", "Male", "Telangana", LocalDateTime.now()));
+            }
+            log.info("======================= AuthService initialized =======================");
+        } catch (Exception e) {
+            log.error("Error during AuthService initialization: {}", e.getMessage());
+            log.warn("Application will continue, but authentication functionality may be limited");
         }
-        // Add test user data
-        if(userRepository.findByEmail("test@user.com") == null) {
-            log.info("++++++++++++++ CREATING TEST USER ++++++++++++++++");
-            userRepository.save(new MyUser("test@user.com", "Test User", passwordEncoder.encode("password"), "testy", "1234567890", "India", "Male", "Telangana", LocalDateTime.now()));
-        }
-        log.info("======================= AuthService initialized =======================");
     }
 
     public boolean loginUser(String email, String rawPassword) {
-        MyUser user = userRepository.findByEmail(email);
-        if (user != null) {
-            return passwordEncoder.matches(rawPassword, user.getPassword());
+        try {
+            MyUser user = userRepository.findByEmail(email);
+            if (user != null) {
+                return passwordEncoder.matches(rawPassword, user.getPassword());
+            }
+            return false;
+        } catch (DataAccessException e) {
+            log.error("Database error during login attempt: {}", e.getMessage());
+            return false;
         }
-        return false;
     }
 
     public MyUser registerUser(MyUser user) {
@@ -56,8 +86,7 @@ public class AuthService implements Ordered {
     }
 
     @Override
-    public int getOrder(){
-        return 1;
+    public int getOrder() {
+        return Ordered.LOWEST_PRECEDENCE;
     }
-
 }

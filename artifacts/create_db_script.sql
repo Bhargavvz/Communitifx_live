@@ -303,3 +303,6 @@ ADD CONSTRAINT fk_volunteer_post
     REFERENCES public.posts(post_id)
     ON DELETE CASCADE;
 
+ALTER TABLE public.posts 
+ADD COLUMN IF NOT EXISTS resolution_description TEXT,
+ADD COLUMN IF NOT EXISTS resolution_image VARCHAR(255); 
